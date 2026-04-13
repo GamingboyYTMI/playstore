@@ -13,9 +13,9 @@ async function startServer() {
 
   // Ensure upload directories exist
   const apkDir = path.join(__dirname, 'uploads', 'apk');
-  const iconsDir = path.join(__dirname, 'uploads', 'icons');
+  const imagesDir = path.join(__dirname, 'images');
   if (!fs.existsSync(apkDir)) fs.mkdirSync(apkDir, { recursive: true });
-  if (!fs.existsSync(iconsDir)) fs.mkdirSync(iconsDir, { recursive: true });
+  if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
 
   // Configure Multer for file uploads
   const storage = multer.diskStorage({
@@ -23,7 +23,7 @@ async function startServer() {
       if (file.fieldname === 'apk') {
         cb(null, apkDir);
       } else if (file.fieldname === 'icon' || file.fieldname === 'previews') {
-        cb(null, iconsDir);
+        cb(null, imagesDir);
       }
     },
     filename: (req, file, cb) => {
@@ -51,8 +51,8 @@ async function startServer() {
       }
 
       const apkPath = `uploads/apk/${files.apk[0].filename}`;
-      const iconPath = `uploads/icons/${files.icon[0].filename}`;
-      const previewPaths = (files.previews || []).map(f => `uploads/icons/${f.filename}`);
+      const iconPath = `images/${files.icon[0].filename}`;
+      const previewPaths = (files.previews || []).map(f => `images/${f.filename}`);
 
       res.json({
         apk: apkPath,
@@ -75,6 +75,7 @@ async function startServer() {
 
   // Serve uploaded files
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+  app.use('/images', express.static(path.join(__dirname, 'images')));
 
   // Serve the static index.html
   app.get('/', (req, res) => {

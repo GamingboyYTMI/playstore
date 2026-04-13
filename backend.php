@@ -11,11 +11,11 @@ $action = $_GET['action'] ?? '';
 // Configuration
 $uploadDir = 'uploads/';
 $apkDir = $uploadDir . 'apk/';
-$iconsDir = $uploadDir . 'icons/';
+$imagesDir = 'images/';
 
 // Ensure directories exist
 if (!is_dir($apkDir)) mkdir($apkDir, 0777, true);
-if (!is_dir($iconsDir)) mkdir($iconsDir, 0777, true);
+if (!is_dir($imagesDir)) mkdir($imagesDir, 0777, true);
 
 if ($action === 'upload') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -36,7 +36,7 @@ if ($action === 'upload') {
     $iconName = time() . '_' . basename($iconFile['name']);
 
     $apkTarget = $apkDir . $apkName;
-    $iconTarget = $iconsDir . $iconName;
+    $iconTarget = $imagesDir . $iconName;
 
     $previewPaths = [];
 
@@ -46,7 +46,7 @@ if ($action === 'upload') {
             foreach ($previews['tmp_name'] as $key => $tmpName) {
                 if ($previews['error'][$key] === UPLOAD_ERR_OK) {
                     $pName = time() . '_' . $key . '_' . basename($previews['name'][$key]);
-                    $pTarget = $iconsDir . $pName;
+                    $pTarget = $imagesDir . $pName;
                     if (move_uploaded_file($tmpName, $pTarget)) {
                         $previewPaths[] = $pTarget;
                     }
