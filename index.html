@@ -3,98 +3,623 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
+    <title>Play Store Clone</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Add some styles for the drag-and-drop and gallery layout */
-        #drop-area {
-            border: 2px dashed #bbb;
-            border-radius: 20px;
-            width: 100%;
-            padding: 20px;
-            text-align: center;
-        }
-        #gallery {
-            display: flex;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-        #gallery img {
-            width: 100px;
-            height: auto;
-            margin: 10px;
-            border: 1px solid #ccc;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f1f3f4; }
+        .play-green { color: #01875f; }
+        .bg-play-green { background-color: #01875f; }
+        .bg-play-green:hover { background-color: #006b4a; }
+        .play-card { background: white; border-radius: 12px; transition: all 0.2s; cursor: pointer; }
+        .play-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .modal { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #323232; color: white; padding: 12px 24px; border-radius: 999px; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.active { opacity: 1; }
+        .view { display: none; }
+        .view.active { display: block; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+        .preview-scroll { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 8px; scrollbar-width: none; }
+        .preview-scroll::-webkit-scrollbar { display: none; }
+        .preview-img { flex-shrink: 0; width: 140px; height: 250px; border-radius: 12px; object-fit: cover; background: #eee; }
     </style>
 </head>
-<body>
-    <h1>Admin Panel</h1>
-    <div id="drop-area">
-        <h2>Drag and Drop Images Here</h2>
-        <input type="file" id="fileElem" multiple accept="image/*" style="display:none;" />
-        <label for="fileElem">Select files</label>
-        <div id="gallery"></div>
+<body class="pb-20">
+
+    <!-- Header -->
+    <header class="bg-white sticky top-0 z-30 shadow-sm px-4 py-3">
+        <div class="max-w-6xl mx-auto flex items-center gap-4">
+            <div id="backBtn" class="hidden cursor-pointer p-2 hover:bg-gray-100 rounded-full" onclick="showView('home')">
+                <i data-lucide="arrow-left" class="w-6 h-6 text-gray-600"></i>
+            </div>
+            <div class="flex-1 relative">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                <input id="searchInput" type="text" placeholder="Search for apps & games" class="w-full bg-gray-100 rounded-full py-2.5 pl-10 pr-4 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#01875f] transition-all">
+            </div>
+            <div id="userProfile" class="flex items-center gap-2">
+                <button id="loginBtn" onclick="showView('auth')" class="text-sm font-medium text-[#01875f] px-4 py-2 hover:bg-green-50 rounded-lg">Sign in</button>
+                <div id="userAvatar" class="hidden cursor-pointer w-10 h-10 rounded-full overflow-hidden border-2 border-[#01875f]" onclick="toggleAdminModal()">
+                    <img id="userImg" src="" class="w-full h-full object-cover">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Views -->
+    <div id="homeView" class="view active">
+        <main class="max-w-6xl mx-auto px-4 mt-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">Recommended for you</h2>
+                <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400"></i>
+            </div>
+            <div id="appGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+            <div id="noApps" class="hidden text-center py-20">
+                <i data-lucide="smartphone" class="w-16 h-16 text-gray-200 mx-auto mb-4"></i>
+                <p class="text-gray-500">No apps found</p>
+            </div>
+        </main>
     </div>
 
-    <script>
-        let dropArea = document.getElementById('drop-area');
-        let gallery = document.getElementById('gallery');
+    <!-- App Details View -->
+    <div id="detailsView" class="view">
+        <main class="max-w-3xl mx-auto px-4 mt-6 bg-white rounded-3xl shadow-sm p-6 mb-10">
+            <div class="flex gap-6 mb-8">
+                <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl overflow-hidden shadow-md flex-shrink-0">
+                    <img id="detIcon" src="" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1">
+                    <h2 id="detName" class="text-2xl font-bold text-gray-900 mb-1"></h2>
+                    <p class="text-[#01875f] font-medium mb-4">Official Release</p>
+                    <div class="flex gap-4 text-sm text-gray-500">
+                        <div class="text-center">
+                            <p class="font-bold text-gray-900">4.5★</p>
+                            <p class="text-xs">Reviews</p>
+                        </div>
+                        <div class="w-px h-8 bg-gray-200"></div>
+                        <div id="detDownloads" class="text-center">
+                            <p class="font-bold text-gray-900"></p>
+                            <p class="text-xs">Downloads</p>
+                        </div>
+                        <div class="w-px h-8 bg-gray-200"></div>
+                        <div id="detSize" class="text-center">
+                            <p class="font-bold text-gray-900"></p>
+                            <p class="text-xs">Size</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        // Prevent default behavior (Prevent file from being opened)
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false);
+            <button id="detInstallBtn" class="bg-play-green text-white font-medium w-full flex items-center justify-center gap-2 py-3 rounded-lg text-lg mb-8 transition-colors">
+                <i data-lucide="download" class="w-5 h-5"></i>
+                Install
+            </button>
+
+            <!-- Previews -->
+            <div class="mb-8">
+                <h3 class="font-semibold mb-4">Previews</h3>
+                <div id="detPreviews" class="preview-scroll"></div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-8 border-t pt-6">
+                <h3 class="font-semibold mb-2">About this app</h3>
+                <p id="detDesc" class="text-gray-600 text-sm leading-relaxed"></p>
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="border-t pt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold">Ratings and reviews</h3>
+                    <button onclick="toggleReviewModal()" class="text-sm font-medium text-[#01875f]">Write a review</button>
+                </div>
+                <div id="reviewsList" class="space-y-6">
+                    <!-- Reviews will be loaded here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Auth View -->
+    <div id="authView" class="view">
+        <main class="max-w-md mx-auto px-4 mt-20 bg-white rounded-3xl shadow-lg p-8">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="user" class="w-8 h-8 text-[#01875f]"></i>
+                </div>
+                <h2 id="authTitle" class="text-2xl font-bold">Sign in</h2>
+                <p id="authSub" class="text-gray-500 text-sm mt-1">Use your Google Account</p>
+            </div>
+
+            <div class="space-y-4">
+                <button onclick="signInWithGoogle()" class="w-full flex items-center justify-center gap-3 border border-gray-300 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
+                    <span class="text-sm font-medium">Continue with Google</span>
+                </button>
+                
+                <div class="flex items-center gap-4 py-2">
+                    <div class="flex-1 h-px bg-gray-200"></div>
+                    <span class="text-xs text-gray-400 uppercase">or</span>
+                    <div class="flex-1 h-px bg-gray-200"></div>
+                </div>
+
+                <div id="emailAuthForm" class="space-y-4">
+                    <input id="authEmail" type="email" placeholder="Email" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none">
+                    <input id="authPass" type="password" placeholder="Password" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none">
+                    <button id="authSubmit" onclick="handleEmailAuth()" class="bg-play-green text-white font-medium w-full py-2.5 rounded-lg">Continue</button>
+                </div>
+
+                <p class="text-center text-sm text-gray-500 mt-6">
+                    <span id="authToggleText">Don't have an account?</span>
+                    <button onclick="toggleAuthMode()" id="authToggleBtn" class="text-[#01875f] font-medium ml-1">Create account</button>
+                </p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="reviewModal" class="modal p-4" onclick="if(event.target === this) toggleReviewModal()">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+            <h2 class="text-xl font-bold mb-4">Write a review</h2>
+            <div class="flex gap-2 mb-4 justify-center">
+                <i data-lucide="star" class="star-rating w-8 h-8 cursor-pointer text-gray-300" onclick="setRating(1)"></i>
+                <i data-lucide="star" class="star-rating w-8 h-8 cursor-pointer text-gray-300" onclick="setRating(2)"></i>
+                <i data-lucide="star" class="star-rating w-8 h-8 cursor-pointer text-gray-300" onclick="setRating(3)"></i>
+                <i data-lucide="star" class="star-rating w-8 h-8 cursor-pointer text-gray-300" onclick="setRating(4)"></i>
+                <i data-lucide="star" class="star-rating w-8 h-8 cursor-pointer text-gray-300" onclick="setRating(5)"></i>
+            </div>
+            <textarea id="reviewComment" placeholder="Describe your experience (optional)" class="w-full h-32 p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none resize-none mb-4"></textarea>
+            <div class="flex justify-end gap-3">
+                <button onclick="toggleReviewModal()" class="px-4 py-2 text-gray-500 font-medium">Cancel</button>
+                <button onclick="submitReview()" class="bg-play-green text-white px-6 py-2 rounded-lg font-medium">Post</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="adminModal" class="modal p-4" onclick="if(event.target === this) toggleAdminModal()">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">Admin Panel</h2>
+                <div class="flex gap-2">
+                    <button onclick="signOutUser()" class="p-2 hover:bg-red-50 text-red-500 rounded-full"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+                    <button onclick="toggleAdminModal()" class="p-2 hover:bg-gray-100 rounded-full"><i data-lucide="x" class="w-6 h-6 text-gray-400"></i></button>
+                </div>
+            </div>
+
+            <div id="adminLogin" class="hidden">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Admin Password</label>
+                        <input id="adminPass" type="password" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none" placeholder="Enter password">
+                    </div>
+                    <button onclick="loginAdmin()" class="bg-play-green text-white font-medium w-full py-2 rounded-lg">Login</button>
+                </div>
+            </div>
+
+            <div id="adminPanel" class="space-y-6">
+                <form id="uploadForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">App Name</label>
+                        <input id="appName" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Version</label>
+                        <input id="appVersion" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">APK File</label>
+                            <input id="apkFile" type="file" accept=".apk" class="text-xs" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+                            <input id="iconFile" type="file" accept="image/*" class="text-xs" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Previews (Max 5)</label>
+                        <input id="previewFiles" type="file" accept="image/*" multiple class="text-xs">
+                    </div>
+                    <button type="submit" id="uploadBtn" class="bg-play-green text-white font-medium w-full py-2 rounded-lg flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-5 h-5"></i> Add App
+                    </button>
+                </form>
+
+                <div class="border-t pt-6">
+                    <h3 class="font-semibold mb-4">Manage Listings</h3>
+                    <div id="adminAppList" class="space-y-3 max-h-60 overflow-y-auto pr-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 flex justify-around items-center z-30">
+        <div class="flex flex-col items-center gap-1 text-[#01875f]" onclick="showView('home')">
+            <i data-lucide="smartphone" class="w-6 h-6"></i>
+            <span class="text-[10px] font-medium">Apps</span>
+        </div>
+        <div class="flex flex-col items-center gap-1 text-gray-400">
+            <i data-lucide="gamepad-2" class="w-6 h-6"></i>
+            <span class="text-[10px] font-medium">Games</span>
+        </div>
+        <div class="flex flex-col items-center gap-1 text-gray-400">
+            <i data-lucide="search" class="w-6 h-6"></i>
+            <span class="text-[10px] font-medium">Search</span>
+        </div>
+    </nav>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD5TOcHTdcT8TtYUUYJLtDeUmbtNjxuSuA",
+            authDomain: "playstore-f3186.firebaseapp.com",
+            databaseURL: "https://playstore-f3186-default-rtdb.firebaseio.com",
+            projectId: "playstore-f3186",
+            storageBucket: "playstore-f3186.firebasestorage.app",
+            messagingSenderId: "604064995398",
+            appId: "1:604064995398:web:c91fa65bc96cef6f865247",
+            measurementId: "G-RDE8NFLXRZ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appsCol = collection(db, "apps");
+        const reviewsCol = collection(db, "reviews");
+
+        let allApps = [];
+        let selectedApp = null;
+        let currentUser = null;
+        let authMode = 'login';
+        let currentRating = 0;
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 3000);
+        }
+
+        // Router
+        window.showView = (viewId) => {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId + 'View').classList.add('active');
+            document.getElementById('backBtn').classList.toggle('hidden', viewId === 'home');
+            window.scrollTo(0, 0);
+        };
+
+        // Auth
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('loginBtn').classList.add('hidden');
+                document.getElementById('userAvatar').classList.remove('hidden');
+                document.getElementById('userImg').src = user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=01875f&color=fff`;
+                if (document.getElementById('authView').classList.contains('active')) showView('home');
+            } else {
+                document.getElementById('loginBtn').classList.remove('hidden');
+                document.getElementById('userAvatar').classList.add('hidden');
+            }
         });
 
-        // Highlight potential drop targets when dragging files over them
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropArea.addEventListener(eventName, highlight, false);
+        window.signInWithGoogle = async () => {
+            try {
+                await signInWithPopup(auth, new GoogleAuthProvider());
+                showToast('Signed in successfully');
+            } catch (err) {
+                showToast('Sign in failed');
+            }
+        };
+
+        window.toggleAuthMode = () => {
+            authMode = authMode === 'login' ? 'signup' : 'login';
+            document.getElementById('authTitle').innerText = authMode === 'login' ? 'Sign in' : 'Create account';
+            document.getElementById('authSub').innerText = authMode === 'login' ? 'Use your Google Account' : 'Join the Play Store community';
+            document.getElementById('authToggleText').innerText = authMode === 'login' ? "Don't have an account?" : "Already have an account?";
+            document.getElementById('authToggleBtn').innerText = authMode === 'login' ? 'Create account' : 'Sign in';
+        };
+
+        window.handleEmailAuth = async () => {
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPass').value;
+            try {
+                if (authMode === 'login') {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, pass);
+                }
+                showToast('Success');
+            } catch (err) {
+                showToast(err.message);
+            }
+        };
+
+        window.signOutUser = async () => {
+            await signOut(auth);
+            toggleAdminModal();
+            showToast('Signed out');
+        };
+
+        // Real-time listener for apps
+        const q = query(appsCol, orderBy("createdAt", "desc"));
+        onSnapshot(q, (snapshot) => {
+            allApps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderApps(allApps);
+            renderAdminApps(allApps);
         });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, unhighlight, false);
-        });
-
-        // Handle dropped files
-        dropArea.addEventListener('drop', handleDrop, false);
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        function highlight() {
-            dropArea.classList.add('highlight');
-        }
-
-        function unhighlight() {
-            dropArea.classList.remove('highlight');
-        }
-
-        function handleDrop(e) {
-            let dt = e.dataTransfer;
-            let files = dt.files;
-            handleFiles(files);
-        }
-
-        function handleFiles(files) {
-            ([...files]).forEach(uploadFile);
-            ([...files]).forEach(previewFile);
-        }
-
-        function uploadFile(file) {
-            // Implement your upload logic here
-            console.log('Uploading: ' + file.name);
-        }
-
-        function previewFile(file) {
-            let reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onloadend = function () {
-                let img = document.createElement('img');
-                img.src = reader.result;
-                gallery.appendChild(img);
+        function renderApps(apps) {
+            const grid = document.getElementById('appGrid');
+            const noApps = document.getElementById('noApps');
+            grid.innerHTML = '';
+            
+            if (apps.length === 0) {
+                noApps.classList.remove('hidden');
+            } else {
+                noApps.classList.add('hidden');
+                apps.forEach(app => {
+                    const card = document.createElement('div');
+                    card.className = 'play-card p-3 group';
+                    card.onclick = () => openDetails(app);
+                    const iconUrl = app.icon || '/images/icon.webp';
+                    card.innerHTML = `
+                        <div class="aspect-square rounded-2xl overflow-hidden mb-2 bg-gray-100">
+                            <img src="${iconUrl}" alt="${app.name}" class="w-full h-full object-cover" onerror="this.src='/images/icon.webp'">
+                        </div>
+                        <h3 class="text-sm font-medium text-gray-900 truncate">${app.name}</h3>
+                        <div class="flex items-center gap-1 text-xs text-gray-500">
+                            <span>${app.size}</span>
+                            <span>•</span>
+                            <div class="flex items-center">
+                                <span>4.5</span>
+                                <i data-lucide="star" class="w-3 h-3 fill-current text-gray-400 ml-0.5"></i>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+                lucide.createIcons();
             }
         }
+
+        function renderAdminApps(apps) {
+            const list = document.getElementById('adminAppList');
+            list.innerHTML = '';
+            apps.forEach(app => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${app.icon}" class="w-10 h-10 rounded-lg object-cover">
+                        <div>
+                            <p class="text-sm font-medium truncate w-32">${app.name}</p>
+                            <p class="text-xs text-gray-500">v${app.version}</p>
+                        </div>
+                    </div>
+                    <button onclick="deleteApp('${app.id}')" class="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
+                `;
+                list.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        window.openDetails = (app) => {
+            selectedApp = app;
+            document.getElementById('detName').innerText = app.name;
+            document.getElementById('detIcon').src = app.icon || '/images/icon.webp';
+            document.getElementById('detIcon').onerror = function() { this.src = '/images/icon.webp'; };
+            document.getElementById('detDownloads').querySelector('p').innerText = app.downloads || 0;
+            document.getElementById('detSize').querySelector('p').innerText = app.size;
+            document.getElementById('detDesc').innerHTML = `Version: ${app.version}<br>Updated: ${app.createdAt ? new Date(app.createdAt.toDate()).toLocaleDateString() : 'Just now'}<br>Secure APK distribution.`;
+            
+            // Previews
+            const prevCont = document.getElementById('detPreviews');
+            prevCont.innerHTML = '';
+            if (app.previews && app.previews.length > 0) {
+                app.previews.forEach(p => {
+                    const img = document.createElement('img');
+                    img.src = p;
+                    img.className = 'preview-img';
+                    prevCont.appendChild(img);
+                });
+            } else {
+                prevCont.innerHTML = '<p class="text-xs text-gray-400">No previews available</p>';
+            }
+
+            // Load Reviews
+            loadReviews(app.id);
+
+            showView('details');
+            
+            document.getElementById('detInstallBtn').onclick = async () => {
+                await updateDoc(doc(db, "apps", app.id), { downloads: increment(1) });
+                const filename = app.apk.split('/').pop();
+                window.location.href = `backend.php?action=download&file=${filename}`;
+                showToast(`Downloading ${app.name}...`);
+            };
+        };
+
+        async function loadReviews(appId) {
+            const list = document.getElementById('reviewsList');
+            list.innerHTML = '<p class="text-sm text-gray-400">Loading reviews...</p>';
+            
+            // Workaround for missing composite index: sort client-side
+            const q = query(reviewsCol, where("appId", "==", appId));
+            onSnapshot(q, (snapshot) => {
+                list.innerHTML = '';
+                if (snapshot.empty) {
+                    list.innerHTML = '<p class="text-sm text-gray-400">No reviews yet. Be the first!</p>';
+                    return;
+                }
+
+                const reviews = snapshot.docs.map(d => d.data());
+                // Sort latest first
+                reviews.sort((a, b) => {
+                    const tA = a.createdAt?.toMillis() || 0;
+                    const tB = b.createdAt?.toMillis() || 0;
+                    return tB - tA;
+                });
+
+                reviews.forEach(rev => {
+                    const item = document.createElement('div');
+                    item.className = 'flex gap-4';
+                    item.innerHTML = `
+                        <img src="${rev.userPhoto || 'https://ui-avatars.com/api/?name=' + rev.userName}" class="w-10 h-10 rounded-full flex-shrink-0">
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <p class="text-sm font-medium">${rev.userName}</p>
+                                <p class="text-xs text-gray-400">${rev.createdAt ? new Date(rev.createdAt.toDate()).toLocaleDateString() : 'Just now'}</p>
+                            </div>
+                            <div class="flex gap-0.5 mb-2">
+                                ${Array(5).fill(0).map((_, i) => `<i data-lucide="star" class="w-3 h-3 ${i < rev.rating ? 'fill-[#01875f] text-[#01875f]' : 'text-gray-300'}"></i>`).join('')}
+                            </div>
+                            <p class="text-sm text-gray-600">${rev.comment}</p>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+                lucide.createIcons();
+            }, (error) => {
+                console.error("Firestore Error:", error);
+                list.innerHTML = '<p class="text-sm text-red-500">Error loading reviews.</p>';
+            });
+        }
+
+        window.toggleReviewModal = () => {
+            if (!currentUser) {
+                showToast('Please sign in to write a review');
+                showView('auth');
+                return;
+            }
+            document.getElementById('reviewModal').classList.toggle('active');
+            setRating(0);
+            document.getElementById('reviewComment').value = '';
+        };
+
+        window.setRating = (r) => {
+            currentRating = r;
+            document.querySelectorAll('.star-rating').forEach((s, i) => {
+                s.classList.toggle('text-[#01875f]', i < r);
+                s.classList.toggle('fill-[#01875f]', i < r);
+                s.classList.toggle('text-gray-300', i >= r);
+                s.classList.toggle('fill-none', i >= r);
+            });
+        };
+
+        window.submitReview = async () => {
+            if (currentRating === 0) {
+                showToast('Please select a rating');
+                return;
+            }
+            const comment = document.getElementById('reviewComment').value;
+            try {
+                await addDoc(reviewsCol, {
+                    appId: selectedApp.id,
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName || currentUser.email.split('@')[0],
+                    userPhoto: currentUser.photoURL,
+                    rating: currentRating,
+                    comment: comment,
+                    createdAt: serverTimestamp()
+                });
+                showToast('Review posted');
+                toggleReviewModal();
+            } catch (err) {
+                showToast('Failed to post review');
+            }
+        };
+
+        window.toggleAdminModal = () => {
+            document.getElementById('adminModal').classList.toggle('active');
+        };
+
+        window.loginAdmin = () => {
+            const pass = document.getElementById('adminPass').value;
+            if (pass === 'admin123') {
+                document.getElementById('adminLogin').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                showToast('Welcome Admin');
+            } else {
+                showToast('Incorrect password');
+            }
+        };
+
+        window.deleteApp = async (id) => {
+            if (confirm('Delete this app?')) {
+                await deleteDoc(doc(db, "apps", id));
+                showToast('App deleted');
+            }
+        };
+
+        // Search filter
+        document.getElementById('searchInput').oninput = (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = allApps.filter(app => app.name.toLowerCase().includes(query));
+            renderApps(filtered);
+        };
+
+        // Upload Form
+        document.getElementById('uploadForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('uploadBtn');
+            btn.disabled = true;
+            btn.innerText = 'Uploading...';
+
+            const formData = new FormData();
+            formData.append('apk', document.getElementById('apkFile').files[0]);
+            formData.append('icon', document.getElementById('iconFile').files[0]);
+            
+            const pFiles = document.getElementById('previewFiles').files;
+            for (let i = 0; i < pFiles.length; i++) {
+                formData.append('previews[]', pFiles[i]);
+            }
+
+            try {
+                const res = await fetch('backend.php?action=upload', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.error) throw new Error(data.error);
+
+                await addDoc(appsCol, {
+                    name: document.getElementById('appName').value,
+                    version: document.getElementById('appVersion').value,
+                    apk: data.apk,
+                    icon: data.icon,
+                    previews: data.previews || [],
+                    size: data.size,
+                    downloads: 0,
+                    createdAt: serverTimestamp()
+                });
+
+                showToast('App uploaded successfully');
+                e.target.reset();
+            } catch (err) {
+                showToast('Upload failed: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="plus" class="w-5 h-5"></i> Add App';
+                lucide.createIcons();
+            }
+        };
     </script>
 </body>
 </html>
