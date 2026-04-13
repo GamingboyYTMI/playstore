@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "AppListing": {
+      "title": "App Listing",
+      "description": "Metadata for an application available in the store",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the app" },
+        "version": { "type": "string", "description": "Version string" },
+        "apk": { "type": "string", "description": "Path to the APK file" },
+        "icon": { "type": "string", "description": "Path to the icon image" },
+        "previews": { "type": "array", "items": { "type": "string" }, "description": "Paths to preview images" },
+        "size": { "type": "string", "description": "File size (e.g., '15 MB')" },
+        "downloads": { "type": "number", "description": "Number of downloads" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["name", "version", "apk", "icon", "previews", "size", "downloads", "createdAt"]
+    },
+    "Review": {
+      "title": "App Review",
+      "description": "A user review for an application",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["appId", "userId", "userName", "rating", "comment", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/apps": {
+      "schema": "AppListing",
+      "description": "Collection of available applications"
+    },
+    "/reviews": {
+      "schema": "Review",
+      "description": "Collection of app reviews"
+    }
+  }
+}

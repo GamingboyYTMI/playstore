@@ -1,0 +1,5 @@
+{
+  "name": "Play Store Clone",
+  "description": "A mobile-friendly Play Store clone with app browsing, search, and APK downloads.",
+  "requestFramePermissions": []
+}
