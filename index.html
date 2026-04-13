@@ -204,6 +204,14 @@
             </div>
 
             <div id="adminPanel" class="space-y-6">
+                <div id="driveStatus" class="p-3 bg-blue-50 rounded-xl flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="cloud" class="w-5 h-5 text-blue-600"></i>
+                        <span id="driveText" class="text-sm font-medium text-blue-800">Google Drive: Disconnected</span>
+                    </div>
+                    <button id="connectDriveBtn" onclick="connectGoogleDrive()" class="text-xs font-bold text-blue-600 hover:underline">Connect</button>
+                </div>
+
                 <form id="uploadForm" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">App Name</label>
@@ -289,6 +297,40 @@
 
         // Initialize Lucide Icons
         lucide.createIcons();
+
+        // Check Google Drive status
+        async function checkDriveStatus() {
+            try {
+                const res = await fetch('/api/auth/google/status');
+                const data = await res.json();
+                const text = document.getElementById('driveText');
+                const btn = document.getElementById('connectDriveBtn');
+                if (data.connected) {
+                    text.innerText = 'Google Drive: Connected';
+                    text.classList.replace('text-blue-800', 'text-green-800');
+                    btn.classList.add('hidden');
+                }
+            } catch (e) {}
+        }
+        checkDriveStatus();
+
+        window.connectGoogleDrive = async () => {
+            try {
+                const res = await fetch('/api/auth/google/url');
+                const { url } = await res.json();
+                const popup = window.open(url, 'google_auth', 'width=600,height=700');
+                if (!popup) showToast('Please allow popups');
+            } catch (e) {
+                showToast('Failed to start auth');
+            }
+        };
+
+        window.addEventListener('message', (event) => {
+            if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+                checkDriveStatus();
+                showToast('Google Drive connected!');
+            }
+        });
 
         function showToast(msg) {
             const toast = document.getElementById('toast');
