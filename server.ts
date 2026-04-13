@@ -12,7 +12,7 @@ async function startServer() {
   const PORT = 3000;
 
   // Ensure upload directories exist
-  const apkDir = path.join(__dirname, 'uploads', 'apk');
+  const apkDir = path.join(__dirname, 'apk');
   const imagesDir = path.join(__dirname, 'images');
   if (!fs.existsSync(apkDir)) fs.mkdirSync(apkDir, { recursive: true });
   if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
@@ -50,7 +50,7 @@ async function startServer() {
         return res.status(400).json({ error: 'Missing files' });
       }
 
-      const apkPath = `uploads/apk/${files.apk[0].filename}`;
+      const apkPath = `apk/${files.apk[0].filename}`;
       const iconPath = `images/${files.icon[0].filename}`;
       const previewPaths = (files.previews || []).map(f => `images/${f.filename}`);
 
@@ -74,7 +74,7 @@ async function startServer() {
   });
 
   // Serve uploaded files
-  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+  app.use('/apk', express.static(path.join(__dirname, 'apk')));
   app.use('/images', express.static(path.join(__dirname, 'images')));
 
   // Serve the static index.html

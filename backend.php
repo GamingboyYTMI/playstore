@@ -9,8 +9,7 @@ header('Content-Type: application/json');
 $action = $_GET['action'] ?? '';
 
 // Configuration
-$uploadDir = 'uploads/';
-$apkDir = $uploadDir . 'apk/';
+$apkDir = 'apk/';
 $imagesDir = 'images/';
 
 // Ensure directories exist
