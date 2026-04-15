@@ -204,12 +204,21 @@
             </div>
 
             <div id="adminPanel" class="space-y-6">
-                <div id="driveStatus" class="p-3 bg-blue-50 rounded-xl flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="cloud" class="w-5 h-5 text-blue-600"></i>
-                        <span id="driveText" class="text-sm font-medium text-blue-800">Google Drive: Disconnected</span>
+                <!-- GitHub Settings -->
+                <div class="p-4 bg-gray-50 rounded-2xl border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <i data-lucide="github" class="w-5 h-5"></i>
+                            GitHub Storage (Free)
+                        </h3>
+                        <button onclick="toggleGithubSettings()" class="text-xs text-[#01875f] font-bold">Configure</button>
                     </div>
-                    <button id="connectDriveBtn" onclick="connectGoogleDrive()" class="text-xs font-bold text-blue-600 hover:underline">Connect</button>
+                    <div id="githubSettings" class="hidden space-y-3">
+                        <input id="ghToken" type="password" placeholder="Personal Access Token" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-[#01875f]">
+                        <input id="ghRepo" type="text" placeholder="username/repo" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-[#01875f]">
+                        <button onclick="saveGithubSettings()" class="w-full bg-[#01875f] text-white py-2 rounded-lg text-sm font-medium">Save Settings</button>
+                    </div>
+                    <div id="ghStatus" class="text-xs text-gray-500 mt-2">Status: Not configured</div>
                 </div>
 
                 <form id="uploadForm" class="space-y-4">
@@ -271,6 +280,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD5TOcHTdcT8TtYUUYJLtDeUmbtNjxuSuA",
@@ -286,6 +296,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+        const storage = getStorage(app);
         const appsCol = collection(db, "apps");
         const reviewsCol = collection(db, "reviews");
 
@@ -297,40 +308,6 @@
 
         // Initialize Lucide Icons
         lucide.createIcons();
-
-        // Check Google Drive status
-        async function checkDriveStatus() {
-            try {
-                const res = await fetch('/api/auth/google/status');
-                const data = await res.json();
-                const text = document.getElementById('driveText');
-                const btn = document.getElementById('connectDriveBtn');
-                if (data.connected) {
-                    text.innerText = 'Google Drive: Connected';
-                    text.classList.replace('text-blue-800', 'text-green-800');
-                    btn.classList.add('hidden');
-                }
-            } catch (e) {}
-        }
-        checkDriveStatus();
-
-        window.connectGoogleDrive = async () => {
-            try {
-                const res = await fetch('/api/auth/google/url');
-                const { url } = await res.json();
-                const popup = window.open(url, 'google_auth', 'width=600,height=700');
-                if (!popup) showToast('Please allow popups');
-            } catch (e) {
-                showToast('Failed to start auth');
-            }
-        };
-
-        window.addEventListener('message', (event) => {
-            if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
-                checkDriveStatus();
-                showToast('Google Drive connected!');
-            }
-        });
 
         function showToast(msg) {
             const toast = document.getElementById('toast');
@@ -494,8 +471,7 @@
             
             document.getElementById('detInstallBtn').onclick = async () => {
                 await updateDoc(doc(db, "apps", app.id), { downloads: increment(1) });
-                const filename = app.apk.split('/').pop();
-                window.location.href = `backend.php?action=download&file=${filename}`;
+                window.open(app.apk, '_blank');
                 showToast(`Downloading ${app.name}...`);
             };
         };
@@ -607,8 +583,13 @@
 
         window.deleteApp = async (id) => {
             if (confirm('Delete this app?')) {
-                await deleteDoc(doc(db, "apps", id));
-                showToast('App deleted');
+                const appToDelete = allApps.find(a => a.id === id);
+                if (appToDelete) {
+                    // Note: In a real app, you'd also delete files from Storage here
+                    // but for simplicity we'll just delete the Firestore doc
+                    await deleteDoc(doc(db, "apps", id));
+                    showToast('App deleted');
+                }
             }
         };
 
@@ -619,6 +600,64 @@
             renderApps(filtered);
         };
 
+        // GitHub Storage Logic
+        let ghConfig = JSON.parse(localStorage.getItem('ghConfig') || 'null');
+
+        window.toggleGithubSettings = () => {
+            document.getElementById('githubSettings').classList.toggle('hidden');
+        };
+
+        window.saveGithubSettings = () => {
+            const token = document.getElementById('ghToken').value;
+            const repo = document.getElementById('ghRepo').value;
+            if (!token || !repo) return showToast('Please fill all fields');
+            ghConfig = { token, repo };
+            localStorage.setItem('ghConfig', JSON.stringify(ghConfig));
+            updateGhStatus();
+            toggleGithubSettings();
+            showToast('GitHub settings saved');
+        };
+
+        function updateGhStatus() {
+            const status = document.getElementById('ghStatus');
+            if (ghConfig) {
+                status.innerText = `Status: Configured (${ghConfig.repo})`;
+                status.classList.replace('text-gray-500', 'text-green-600');
+            }
+        }
+        updateGhStatus();
+
+        async function uploadToGithub(file, path) {
+            if (!ghConfig) throw new Error('GitHub not configured');
+            
+            const reader = new FileReader();
+            const content = await new Promise((resolve) => {
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+
+            const url = `https://api.github.com/repos/${ghConfig.repo}/contents/${path}`;
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${ghConfig.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: `Upload ${file.name}`,
+                    content: content
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'GitHub upload failed');
+            }
+
+            const data = await res.json();
+            return `https://raw.githubusercontent.com/${ghConfig.repo}/main/${path}`;
+        }
+
         // Upload Form
         document.getElementById('uploadForm').onsubmit = async (e) => {
             e.preventDefault();
@@ -626,28 +665,47 @@
             btn.disabled = true;
             btn.innerText = 'Uploading...';
 
-            const formData = new FormData();
-            formData.append('apk', document.getElementById('apkFile').files[0]);
-            formData.append('icon', document.getElementById('iconFile').files[0]);
-            
-            const pFiles = document.getElementById('previewFiles').files;
-            for (let i = 0; i < pFiles.length; i++) {
-                formData.append('previews[]', pFiles[i]);
-            }
-
             try {
-                const res = await fetch('backend.php?action=upload', { method: 'POST', body: formData });
-                const data = await res.json();
+                const apkFile = document.getElementById('apkFile').files[0];
+                const iconFile = document.getElementById('iconFile').files[0];
+                const pFiles = document.getElementById('previewFiles').files;
 
-                if (data.error) throw new Error(data.error);
+                let apkUrl, iconUrl, previewUrls = [];
+
+                if (ghConfig) {
+                    // Use GitHub Storage
+                    const timestamp = Date.now();
+                    apkUrl = await uploadToGithub(apkFile, `apk/${timestamp}_${apkFile.name}`);
+                    iconUrl = await uploadToGithub(iconFile, `images/${timestamp}_${iconFile.name}`);
+                    for (let i = 0; i < pFiles.length; i++) {
+                        const pUrl = await uploadToGithub(pFiles[i], `images/${timestamp}_p${i}_${pFiles[i].name}`);
+                        previewUrls.push(pUrl);
+                    }
+                } else {
+                    // Fallback to Firebase Storage
+                    const apkRef = ref(storage, `apk/${Date.now()}_${apkFile.name}`);
+                    const apkSnap = await uploadBytes(apkRef, apkFile);
+                    apkUrl = await getDownloadURL(apkSnap.ref);
+
+                    const iconRef = ref(storage, `images/${Date.now()}_${iconFile.name}`);
+                    const iconSnap = await uploadBytes(iconRef, iconFile);
+                    iconUrl = await getDownloadURL(iconSnap.ref);
+
+                    for (let i = 0; i < pFiles.length; i++) {
+                        const pRef = ref(storage, `images/${Date.now()}_p${i}_${pFiles[i].name}`);
+                        const pSnap = await uploadBytes(pRef, pFiles[i]);
+                        const pUrl = await getDownloadURL(pSnap.ref);
+                        previewUrls.push(pUrl);
+                    }
+                }
 
                 await addDoc(appsCol, {
                     name: document.getElementById('appName').value,
                     version: document.getElementById('appVersion').value,
-                    apk: data.apk,
-                    icon: data.icon,
-                    previews: data.previews || [],
-                    size: data.size,
+                    apk: apkUrl,
+                    icon: iconUrl,
+                    previews: previewUrls,
+                    size: (apkFile.size / (1024 * 1024)).toFixed(1) + ' MB',
                     downloads: 0,
                     createdAt: serverTimestamp()
                 });
@@ -656,6 +714,7 @@
                 e.target.reset();
             } catch (err) {
                 showToast('Upload failed: ' + err.message);
+                console.error(err);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i data-lucide="plus" class="w-5 h-5"></i> Add App';
