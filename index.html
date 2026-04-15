@@ -18,7 +18,18 @@
         .play-card { background: white; border-radius: 12px; transition: all 0.2s; cursor: pointer; }
         .play-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .modal { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
+        .profile-tab {
+            background: #f3f4f6;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+        .profile-tab.active {
+            background: #01875f;
+            color: white;
+            box-shadow: 0 4px 12px rgba(1, 135, 95, 0.2);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #323232; color: white; padding: 12px 24px; border-radius: 999px; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
         .toast.active { opacity: 1; }
         .view { display: none; }
@@ -45,7 +56,7 @@
             </div>
             <div id="userProfile" class="flex items-center gap-2">
                 <button id="loginBtn" onclick="showView('auth')" class="text-sm font-medium text-[#01875f] px-4 py-2 hover:bg-green-50 rounded-lg">Sign in</button>
-                <div id="userAvatar" class="hidden cursor-pointer w-10 h-10 rounded-full overflow-hidden border-2 border-[#01875f]" onclick="toggleAdminModal()">
+                <div id="userAvatar" class="hidden cursor-pointer w-10 h-10 rounded-full overflow-hidden border-2 border-[#01875f]" onclick="showView('profile')">
                     <img id="userImg" src="" class="w-full h-full object-cover">
                 </div>
             </div>
@@ -63,6 +74,133 @@
             <div id="noApps" class="hidden text-center py-20">
                 <i data-lucide="smartphone" class="w-16 h-16 text-gray-200 mx-auto mb-4"></i>
                 <p class="text-gray-500">No apps found</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Profile View -->
+    <div id="profileView" class="view">
+        <main class="max-w-2xl mx-auto px-4 mt-6 pb-24">
+            <!-- Profile Header -->
+            <div class="bg-white rounded-3xl shadow-sm p-6 mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="relative w-20 h-20">
+                        <img id="profileImg" src="" class="w-full h-full rounded-full object-cover border-2 border-play-green">
+                        <div class="absolute bottom-0 right-0 bg-play-green text-white p-1 rounded-full shadow-md">
+                            <i data-lucide="camera" class="w-3 h-3"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 id="profileHeaderName" class="text-xl font-bold text-gray-900"></h2>
+                        <p id="profileEmail" class="text-gray-500 text-sm"></p>
+                        <div id="profileRoleBadge" class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-600 mt-1">User</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Tabs -->
+            <div class="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-2">
+                <button onclick="setProfileTab('account')" class="profile-tab active px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">Account</button>
+                <button onclick="setProfileTab('projects')" class="profile-tab px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">My Projects</button>
+                <button onclick="setProfileTab('upload')" class="profile-tab px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">Upload New</button>
+                <button id="adminTabBtn" onclick="setProfileTab('admin')" class="profile-tab hidden px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap bg-orange-50 text-orange-600">Admin Panel</button>
+            </div>
+
+            <!-- Tab Contents -->
+            <div id="profileTabContent" class="space-y-6">
+                <!-- Account Tab -->
+                <div id="tab-account" class="profile-content space-y-6">
+                    <div class="bg-white rounded-3xl shadow-sm p-6">
+                        <h3 class="font-bold mb-4">Account Settings</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Display Name</label>
+                                <input id="profileName" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-play-green outline-none">
+                            </div>
+                            <button onclick="saveProfile()" class="w-full bg-play-green text-white font-bold py-3 rounded-xl shadow-lg shadow-green-100">Save Changes</button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-3xl shadow-sm p-6">
+                        <button onclick="signOutUser()" class="w-full flex items-center justify-center gap-2 text-red-500 font-bold py-3 rounded-xl hover:bg-red-50 transition-colors">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                            Sign Out
+                        </button>
+                    </div>
+                </div>
+
+                <!-- My Projects Tab -->
+                <div id="tab-projects" class="profile-content hidden">
+                    <div class="bg-white rounded-3xl shadow-sm p-6">
+                        <h3 id="manageAppsTitle" class="font-bold mb-4">My Uploaded Apps</h3>
+                        <div id="manageAppList" class="space-y-4">
+                            <!-- Apps will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Tab -->
+                <div id="tab-upload" class="profile-content hidden">
+                    <div class="bg-white rounded-3xl shadow-sm p-6">
+                        <h3 class="font-bold mb-4">Submit New Project</h3>
+                        <form id="uploadForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">App Name</label>
+                                <input id="appName" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-play-green outline-none" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Version</label>
+                                <input id="appVersion" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-play-green outline-none" required>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">APK File</label>
+                                    <input id="apkFile" type="file" accept=".apk" class="text-xs" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+                                    <input id="iconFile" type="file" accept="image/*" class="text-xs" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Previews (Max 5)</label>
+                                <input id="previewFiles" type="file" accept="image/*" multiple class="text-xs">
+                            </div>
+                            <button type="submit" id="uploadBtn" class="bg-play-green text-white font-bold w-full py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-100">
+                                <i data-lucide="plus" class="w-5 h-5"></i> Submit App
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Admin Tab -->
+                <div id="tab-admin" class="profile-content hidden space-y-6">
+                    <!-- GitHub Settings -->
+                    <div id="ghSection" class="bg-white rounded-3xl shadow-sm p-6 border border-orange-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold flex items-center gap-2">
+                                <i data-lucide="github" class="w-5 h-5 text-gray-700"></i>
+                                GitHub Storage (Free)
+                            </h3>
+                            <button onclick="toggleGithubSettings()" class="text-xs text-play-green font-bold">Configure</button>
+                        </div>
+                        <div id="githubSettings" class="hidden space-y-3">
+                            <input id="ghToken" type="password" placeholder="Personal Access Token" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-play-green">
+                            <input id="ghRepo" type="text" placeholder="username/repo" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-play-green">
+                            <button onclick="saveGithubSettings()" class="w-full bg-play-green text-white py-2 rounded-lg text-sm font-medium">Save Settings</button>
+                        </div>
+                        <div id="ghStatus" class="text-xs text-gray-500 mt-2">Status: Not configured</div>
+                    </div>
+
+                    <!-- Approval Section -->
+                    <div id="approvalSection" class="bg-white rounded-3xl shadow-sm p-6 border border-orange-100">
+                        <h3 class="font-bold mb-4 flex items-center gap-2">
+                            <i data-lucide="clipboard-check" class="w-5 h-5 text-orange-500"></i>
+                            Pending Approvals
+                        </h3>
+                        <div id="pendingAppList" class="space-y-3 max-h-80 overflow-y-auto pr-2"></div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -150,8 +288,10 @@
                 </div>
 
                 <div id="emailAuthForm" class="space-y-4">
+                    <input id="authName" type="text" placeholder="Full Name" class="hidden w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none">
                     <input id="authEmail" type="email" placeholder="Email" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none">
                     <input id="authPass" type="password" placeholder="Password" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none">
+                    <input id="authConfirmPass" type="password" placeholder="Confirm Password" class="hidden w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none">
                     <button id="authSubmit" onclick="handleEmailAuth()" class="bg-play-green text-white font-medium w-full py-2.5 rounded-lg">Continue</button>
                 </div>
 
@@ -182,103 +322,27 @@
         </div>
     </div>
 
-    <!-- Admin Modal -->
-    <div id="adminModal" class="modal p-4" onclick="if(event.target === this) toggleAdminModal()">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold">Admin Panel</h2>
-                <div class="flex gap-2">
-                    <button onclick="signOutUser()" class="p-2 hover:bg-red-50 text-red-500 rounded-full"><i data-lucide="log-out" class="w-5 h-5"></i></button>
-                    <button onclick="toggleAdminModal()" class="p-2 hover:bg-gray-100 rounded-full"><i data-lucide="x" class="w-6 h-6 text-gray-400"></i></button>
-                </div>
-            </div>
-
-            <div id="adminLogin" class="hidden">
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Admin Password</label>
-                        <input id="adminPass" type="password" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none" placeholder="Enter password">
-                    </div>
-                    <button onclick="loginAdmin()" class="bg-play-green text-white font-medium w-full py-2 rounded-lg">Login</button>
-                </div>
-            </div>
-
-            <div id="adminPanel" class="space-y-6">
-                <!-- GitHub Settings -->
-                <div class="p-4 bg-gray-50 rounded-2xl border border-gray-200">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-bold flex items-center gap-2">
-                            <i data-lucide="github" class="w-5 h-5"></i>
-                            GitHub Storage (Free)
-                        </h3>
-                        <button onclick="toggleGithubSettings()" class="text-xs text-[#01875f] font-bold">Configure</button>
-                    </div>
-                    <div id="githubSettings" class="hidden space-y-3">
-                        <input id="ghToken" type="password" placeholder="Personal Access Token" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-[#01875f]">
-                        <input id="ghRepo" type="text" placeholder="username/repo" class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-[#01875f]">
-                        <button onclick="saveGithubSettings()" class="w-full bg-[#01875f] text-white py-2 rounded-lg text-sm font-medium">Save Settings</button>
-                    </div>
-                    <div id="ghStatus" class="text-xs text-gray-500 mt-2">Status: Not configured</div>
-                </div>
-
-                <form id="uploadForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">App Name</label>
-                        <input id="appName" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Version</label>
-                        <input id="appVersion" type="text" class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#01875f] outline-none" required>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">APK File</label>
-                            <input id="apkFile" type="file" accept=".apk" class="text-xs" required>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
-                            <input id="iconFile" type="file" accept="image/*" class="text-xs" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Previews (Max 5)</label>
-                        <input id="previewFiles" type="file" accept="image/*" multiple class="text-xs">
-                    </div>
-                    <button type="submit" id="uploadBtn" class="bg-play-green text-white font-medium w-full py-2 rounded-lg flex items-center justify-center gap-2">
-                        <i data-lucide="plus" class="w-5 h-5"></i> Add App
-                    </button>
-                </form>
-
-                <div class="border-t pt-6">
-                    <h3 class="font-semibold mb-4">Manage Listings</h3>
-                    <div id="adminAppList" class="space-y-3 max-h-60 overflow-y-auto pr-2"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Bottom Nav -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 flex justify-around items-center z-30">
-        <div class="flex flex-col items-center gap-1 text-[#01875f]" onclick="showView('home')">
+        <div class="nav-item flex flex-col items-center gap-1 text-[#01875f] cursor-pointer" onclick="showView('home')">
             <i data-lucide="smartphone" class="w-6 h-6"></i>
             <span class="text-[10px] font-medium">Apps</span>
         </div>
-        <div class="flex flex-col items-center gap-1 text-gray-400">
+        <div class="nav-item flex flex-col items-center gap-1 text-gray-400 cursor-pointer">
             <i data-lucide="gamepad-2" class="w-6 h-6"></i>
             <span class="text-[10px] font-medium">Games</span>
         </div>
-        <div class="flex flex-col items-center gap-1 text-gray-400">
-            <i data-lucide="search" class="w-6 h-6"></i>
-            <span class="text-[10px] font-medium">Search</span>
+        <div class="nav-item flex flex-col items-center gap-1 text-gray-400 cursor-pointer" onclick="showView('profile')">
+            <i data-lucide="user" class="w-6 h-6"></i>
+            <span class="text-[10px] font-medium">Profile</span>
         </div>
     </nav>
 
     <div id="toast" class="toast"></div>
 
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, increment, serverTimestamp, where, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
@@ -299,10 +363,14 @@
         const storage = getStorage(app);
         const appsCol = collection(db, "apps");
         const reviewsCol = collection(db, "reviews");
+        const usersCol = collection(db, "users");
+
+        const ADMIN_EMAIL = "gamingboylive46@gmail.com";
 
         let allApps = [];
         let selectedApp = null;
         let currentUser = null;
+        let userRole = 'user';
         let authMode = 'login';
         let currentRating = 0;
 
@@ -318,25 +386,173 @@
 
         // Router
         window.showView = (viewId) => {
+            if (viewId === 'profile' && !currentUser) {
+                showView('auth');
+                return;
+            }
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(viewId + 'View').classList.add('active');
             document.getElementById('backBtn').classList.toggle('hidden', viewId === 'home');
+            
+            // Update nav colors
+            document.querySelectorAll('.nav-item').forEach((item, i) => {
+                const isActive = (viewId === 'home' && i === 0) || (viewId === 'profile' && i === 2);
+                item.classList.toggle('text-[#01875f]', isActive);
+                item.classList.toggle('text-gray-400', !isActive);
+            });
+
+            if (viewId === 'profile') loadProfileData();
             window.scrollTo(0, 0);
         };
 
+        let appsUnsubscribe = null;
+        let myAppsUnsubscribe = null;
+        let myApps = [];
+
+        function handleFirestoreError(error, operationType, path) {
+            if (error.code === 'permission-denied') {
+                console.warn(`Permission denied for ${path}. This is expected if you are not an admin.`);
+                return;
+            }
+            console.error(`Firestore Error [${operationType}] on ${path}:`, error);
+        }
+
+        function startAppsListeners() {
+            if (appsUnsubscribe) appsUnsubscribe();
+            if (myAppsUnsubscribe) myAppsUnsubscribe();
+
+            // 1. Main Apps Listener
+            // Admin sees everything, Users see only published
+            let qApps;
+            if (userRole === 'admin') {
+                qApps = query(appsCol);
+            } else {
+                qApps = query(appsCol, where("status", "==", "published"));
+            }
+
+            appsUnsubscribe = onSnapshot(qApps, (snapshot) => {
+                allApps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateUI();
+            }, (error) => handleFirestoreError(error, 'LIST', 'apps'));
+
+            // 2. My Apps Listener (For non-admins to see their own pending/published apps)
+            if (currentUser && userRole !== 'admin') {
+                const qMy = query(appsCol, where("uploadedBy", "==", currentUser.uid));
+                myAppsUnsubscribe = onSnapshot(qMy, (snapshot) => {
+                    myApps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    updateUI();
+                }, (error) => handleFirestoreError(error, 'LIST', 'myApps'));
+            } else {
+                myApps = [];
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            // Combine apps for display, ensuring uniqueness by ID
+            const combined = [...allApps, ...myApps];
+            const uniqueApps = Array.from(new Map(combined.map(item => [item.id, item])).values());
+            
+            // Sort by createdAt desc
+            uniqueApps.sort((a, b) => {
+                const tA = a.createdAt?.toMillis() || 0;
+                const tB = b.createdAt?.toMillis() || 0;
+                return tB - tA;
+            });
+
+            renderApps(uniqueApps.filter(a => a.status === 'published'));
+            renderManageApps(uniqueApps);
+            renderPendingApps(uniqueApps);
+        }
+
         // Auth
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             currentUser = user;
             if (user) {
+                // Check/Create user role
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (!userDoc.exists()) {
+                    userRole = user.email === ADMIN_EMAIL ? 'admin' : 'user';
+                    await setDoc(doc(db, "users", user.uid), {
+                        email: user.email,
+                        displayName: user.displayName || user.email.split('@')[0],
+                        role: userRole,
+                        createdAt: serverTimestamp()
+                    });
+                } else {
+                    userRole = userDoc.data().role;
+                }
+
                 document.getElementById('loginBtn').classList.add('hidden');
                 document.getElementById('userAvatar').classList.remove('hidden');
                 document.getElementById('userImg').src = user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=01875f&color=fff`;
+                
+                // Admin UI visibility
+                document.getElementById('ghSection').classList.toggle('hidden', userRole !== 'admin');
+                document.getElementById('approvalSection').classList.toggle('hidden', userRole !== 'admin');
+
+                if (userRole === 'admin') loadGithubConfig();
+                
+                startAppsListeners();
+
                 if (document.getElementById('authView').classList.contains('active')) showView('home');
             } else {
                 document.getElementById('loginBtn').classList.remove('hidden');
                 document.getElementById('userAvatar').classList.add('hidden');
+                userRole = 'user';
+                startAppsListeners();
+                if (document.getElementById('profileView').classList.contains('active')) showView('home');
             }
         });
+
+        async function loadProfileData() {
+            if (!currentUser) return;
+            const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+            const data = userDoc.data();
+            
+            document.getElementById('profileImg').src = currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.email}&background=01875f&color=fff`;
+            document.getElementById('profileEmail').innerText = currentUser.email;
+            document.getElementById('profileName').value = data.displayName || '';
+            document.getElementById('profileHeaderName').innerText = data.displayName || currentUser.email.split('@')[0];
+            
+            const badge = document.getElementById('profileRoleBadge');
+            badge.innerText = data.role;
+            badge.className = `inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${data.role === 'admin' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'}`;
+            
+            // Show admin tab if applicable
+            document.getElementById('adminTabBtn').classList.toggle('hidden', data.role !== 'admin');
+            
+            // Default to account tab
+            setProfileTab('account');
+            
+            // Refresh manage list
+            updateUI();
+        }
+
+        window.setProfileTab = (tabId) => {
+            document.querySelectorAll('.profile-tab').forEach(tab => {
+                const isActive = tab.getAttribute('onclick').includes(`'${tabId}'`);
+                tab.classList.toggle('active', isActive);
+            });
+            document.querySelectorAll('.profile-content').forEach(content => {
+                content.classList.toggle('hidden', content.id !== `tab-${tabId}`);
+            });
+            lucide.createIcons();
+        };
+
+        window.saveProfile = async () => {
+            const newName = document.getElementById('profileName').value;
+            if (!newName) return showToast('Name cannot be empty');
+            
+            try {
+                await updateDoc(doc(db, "users", currentUser.uid), {
+                    displayName: newName
+                });
+                showToast('Profile updated!');
+            } catch (err) {
+                showToast('Failed to update profile');
+            }
+        };
 
         window.signInWithGoogle = async () => {
             try {
@@ -353,16 +569,35 @@
             document.getElementById('authSub').innerText = authMode === 'login' ? 'Use your Google Account' : 'Join the Play Store community';
             document.getElementById('authToggleText').innerText = authMode === 'login' ? "Don't have an account?" : "Already have an account?";
             document.getElementById('authToggleBtn').innerText = authMode === 'login' ? 'Create account' : 'Sign in';
+            
+            // Toggle extra fields
+            document.getElementById('authName').classList.toggle('hidden', authMode === 'login');
+            document.getElementById('authConfirmPass').classList.toggle('hidden', authMode === 'login');
         };
 
         window.handleEmailAuth = async () => {
+            const name = document.getElementById('authName').value;
             const email = document.getElementById('authEmail').value;
             const pass = document.getElementById('authPass').value;
+            const confirmPass = document.getElementById('authConfirmPass').value;
+
             try {
                 if (authMode === 'login') {
                     await signInWithEmailAndPassword(auth, email, pass);
                 } else {
-                    await createUserWithEmailAndPassword(auth, email, pass);
+                    if (!name) throw new Error('Please enter your name');
+                    if (pass !== confirmPass) throw new Error('Passwords do not match');
+                    
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+                    const role = userCredential.user.email === ADMIN_EMAIL ? 'admin' : 'user';
+                    
+                    // Create user document immediately with the provided name
+                    await setDoc(doc(db, "users", userCredential.user.uid), {
+                        email: userCredential.user.email,
+                        displayName: name,
+                        role: role,
+                        createdAt: serverTimestamp()
+                    });
                 }
                 showToast('Success');
             } catch (err) {
@@ -372,17 +607,8 @@
 
         window.signOutUser = async () => {
             await signOut(auth);
-            toggleAdminModal();
             showToast('Signed out');
         };
-
-        // Real-time listener for apps
-        const q = query(appsCol, orderBy("createdAt", "desc"));
-        onSnapshot(q, (snapshot) => {
-            allApps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderApps(allApps);
-            renderAdminApps(allApps);
-        });
 
         function renderApps(apps) {
             const grid = document.getElementById('appGrid');
@@ -418,18 +644,28 @@
             }
         }
 
-        function renderAdminApps(apps) {
-            const list = document.getElementById('adminAppList');
+        function renderManageApps(apps) {
+            const list = document.getElementById('manageAppList');
             list.innerHTML = '';
-            apps.forEach(app => {
+            
+            // Users only see their own apps, Admin sees all
+            const myApps = userRole === 'admin' ? apps : apps.filter(a => a.uploadedBy === currentUser?.uid);
+            
+            if (myApps.length === 0) {
+                list.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No apps found</p>';
+                return;
+            }
+
+            myApps.forEach(app => {
                 const item = document.createElement('div');
                 item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+                const statusColor = app.status === 'published' ? 'text-green-600' : 'text-orange-500';
                 item.innerHTML = `
                     <div class="flex items-center gap-3">
                         <img src="${app.icon}" class="w-10 h-10 rounded-lg object-cover">
                         <div>
                             <p class="text-sm font-medium truncate w-32">${app.name}</p>
-                            <p class="text-xs text-gray-500">v${app.version}</p>
+                            <p class="text-[10px] ${statusColor} font-bold uppercase">${app.status}</p>
                         </div>
                     </div>
                     <button onclick="deleteApp('${app.id}')" class="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors">
@@ -440,6 +676,52 @@
             });
             lucide.createIcons();
         }
+
+        function renderPendingApps(apps) {
+            const list = document.getElementById('pendingAppList');
+            if (userRole !== 'admin') return;
+            
+            list.innerHTML = '';
+            const pending = apps.filter(a => a.status === 'pending');
+            
+            if (pending.length === 0) {
+                list.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No pending approvals</p>';
+                return;
+            }
+
+            pending.forEach(app => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100';
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${app.icon}" class="w-10 h-10 rounded-lg object-cover">
+                        <div>
+                            <p class="text-sm font-medium truncate w-24">${app.name}</p>
+                            <p class="text-[10px] text-gray-500">v${app.version}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="approveApp('${app.id}')" class="p-2 text-green-600 hover:bg-green-100 rounded-full">
+                            <i data-lucide="check" class="w-5 h-5"></i>
+                        </button>
+                        <button onclick="deleteApp('${app.id}')" class="p-2 text-red-500 hover:bg-red-100 rounded-full">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        window.approveApp = async (id) => {
+            try {
+                await updateDoc(doc(db, "apps", id), { status: 'published' });
+                showToast('App approved and published!');
+            } catch (err) {
+                showToast('Approval failed');
+            }
+        };
 
         window.openDetails = (app) => {
             selectedApp = app;
@@ -566,21 +848,6 @@
             }
         };
 
-        window.toggleAdminModal = () => {
-            document.getElementById('adminModal').classList.toggle('active');
-        };
-
-        window.loginAdmin = () => {
-            const pass = document.getElementById('adminPass').value;
-            if (pass === 'admin123') {
-                document.getElementById('adminLogin').classList.add('hidden');
-                document.getElementById('adminPanel').classList.remove('hidden');
-                showToast('Welcome Admin');
-            } else {
-                showToast('Incorrect password');
-            }
-        };
-
         window.deleteApp = async (id) => {
             if (confirm('Delete this app?')) {
                 const appToDelete = allApps.find(a => a.id === id);
@@ -601,21 +868,43 @@
         };
 
         // GitHub Storage Logic
-        let ghConfig = JSON.parse(localStorage.getItem('ghConfig') || 'null');
+        let ghConfig = null;
+
+        async function loadGithubConfig() {
+            if (userRole !== 'admin') return;
+            try {
+                const docSnap = await getDoc(doc(db, "settings", "github"));
+                if (docSnap.exists()) {
+                    ghConfig = docSnap.data();
+                    updateGhStatus();
+                }
+            } catch (e) {
+                console.error("Error loading GitHub config:", e);
+            }
+        }
 
         window.toggleGithubSettings = () => {
             document.getElementById('githubSettings').classList.toggle('hidden');
+            if (ghConfig) {
+                document.getElementById('ghToken').value = ghConfig.token;
+                document.getElementById('ghRepo').value = ghConfig.repo;
+            }
         };
 
-        window.saveGithubSettings = () => {
+        window.saveGithubSettings = async () => {
             const token = document.getElementById('ghToken').value;
             const repo = document.getElementById('ghRepo').value;
             if (!token || !repo) return showToast('Please fill all fields');
-            ghConfig = { token, repo };
-            localStorage.setItem('ghConfig', JSON.stringify(ghConfig));
-            updateGhStatus();
-            toggleGithubSettings();
-            showToast('GitHub settings saved');
+            
+            try {
+                ghConfig = { token, repo };
+                await setDoc(doc(db, "settings", "github"), ghConfig);
+                updateGhStatus();
+                toggleGithubSettings();
+                showToast('GitHub settings saved to cloud');
+            } catch (e) {
+                showToast('Failed to save settings');
+            }
         };
 
         function updateGhStatus() {
@@ -625,7 +914,6 @@
                 status.classList.replace('text-gray-500', 'text-green-600');
             }
         }
-        updateGhStatus();
 
         async function uploadToGithub(file, path) {
             if (!ghConfig) throw new Error('GitHub not configured');
@@ -707,10 +995,12 @@
                     previews: previewUrls,
                     size: (apkFile.size / (1024 * 1024)).toFixed(1) + ' MB',
                     downloads: 0,
+                    status: userRole === 'admin' ? 'published' : 'pending',
+                    uploadedBy: currentUser.uid,
                     createdAt: serverTimestamp()
                 });
 
-                showToast('App uploaded successfully');
+                showToast(userRole === 'admin' ? 'App published!' : 'App submitted for approval');
                 e.target.reset();
             } catch (err) {
                 showToast('Upload failed: ' + err.message);

@@ -12,9 +12,23 @@
         "previews": { "type": "array", "items": { "type": "string" }, "description": "Paths to preview images" },
         "size": { "type": "string", "description": "File size (e.g., '15 MB')" },
         "downloads": { "type": "number", "description": "Number of downloads" },
+        "status": { "type": "string", "enum": ["pending", "published"], "description": "Approval status" },
+        "uploadedBy": { "type": "string", "description": "UID of the uploader" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
       },
-      "required": ["name", "version", "apk", "icon", "previews", "size", "downloads", "createdAt"]
+      "required": ["name", "version", "apk", "icon", "previews", "size", "downloads", "status", "uploadedBy", "createdAt"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "Private user profile data",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "displayName", "role", "createdAt"]
     },
     "Review": {
       "title": "App Review",
@@ -40,6 +54,10 @@
     "/reviews": {
       "schema": "Review",
       "description": "Collection of app reviews"
+    },
+    "/users": {
+      "schema": "User",
+      "description": "Collection of user profiles"
     }
   }
 }
